@@ -9,7 +9,11 @@ class UploadComponent extends Component {
         this.state = {
             headers: [],
             tableData: [],
-            dataValid: false
+            existData: false,
+            offer: 0,
+            demand: 0,
+            data: [],
+            isValid: false
         }
 
         this.uploadFile = this.uploadFile.bind(this);
@@ -18,10 +22,99 @@ class UploadComponent extends Component {
     uploadFile(data){
         let headers = data[0];
         let body = data.slice(1);
+        let isValid = this.validateOfferAndDemand(body);
 
         this.setState((state) => {
-            return { headers: headers, tableData: body, dataValid: true }
+            return { headers: headers, tableData: body, existData: true, isValid: isValid }
         })
+    }
+
+    validateOfferAndDemand(data){
+        let offer = 0, demand = 0, realData = [], isValid = false;
+    
+        for(let i = 0; i < data.length-1; i++){
+            /* Offer */
+            if(parseInt(data[i][data.length])){
+                offer += parseInt(data[i][data.length]);
+            }
+
+            /* Demand */
+            if(i >= data.length-2){
+                for(let a = 1; a < data.length; a++){
+                    if(parseInt(data[i][a])){
+                        demand += parseInt(data[i][a]);
+                    }
+                }
+            }
+
+            /* Real Data */
+            if(i < data.length - 2){
+                for(let b = 1; b < data.length; b++){
+                    let value = parseInt(data[i][b]);
+                    if(value){
+                        let newI = i + 1;
+
+                        realData.push({
+                            value: value,
+                            x: newI,
+                            y: b,
+                            used: false,
+                            offer: parseInt(data[i][data.length]),
+                            demand: parseInt(data[data.length - 2][b]),
+                        })
+                    }
+                }
+            }
+        }
+
+        if(demand === offer){
+            isValid = true;
+        }
+
+        this.setState((state) => {
+            return { offer: offer, demand: demand, data: realData }
+        });
+
+        /* Min Cost */
+        let min = this.getMin(realData);
+        // console.log(realData, min);
+
+        return isValid;
+    }
+
+    getMin(data){
+        let min = data[0].value, minIndex = 0;
+
+        console.log('DATA BEFORE: ',data);
+
+        for (let i = 1; i < data.length; i++){
+            if(!data[i].used){
+                let v = data[i].value;
+    
+                min = ( v < min ) ? v : min;
+            }
+        }
+
+        for (let a = 0; a < data.length; a++){
+            if(data[a].value === min){
+                minIndex = a;
+            }
+        }
+
+        data[minIndex].used = true;
+        let difference = data[minIndex].offer - data[minIndex].demand;
+
+        if (data[minIndex].offer >= data[minIndex].demand) {
+            data[minIndex].demand = 0;
+            data[minIndex].offer = difference;
+        } else if(data[minIndex].offer < data[minIndex].demand) {
+            data[minIndex].demand = difference;
+            data[minIndex].offer = 0;
+        }
+
+        console.log('DATA NEXT: ',data);
+
+        return { value: min, minIndex: minIndex};
     }
 
     handleError(error){
@@ -29,7 +122,7 @@ class UploadComponent extends Component {
     }
 
     render(){
-        let { headers, tableData, dataValid } = this.state;
+        let { headers, tableData, existData } = this.state;
 
         return (
             <div className="col-md-12">
@@ -41,7 +134,7 @@ class UploadComponent extends Component {
                     inputId="file"
                 />
 
-                <div className="col-md-12" style={{ display: dataValid ? 'initial' : 'none' }}>
+                <div className="col-md-12" style={{ display: existData ? 'initial' : 'none' }}>
                     <h1>Método de Esquina Noroeste</h1>
                     <table className="table table-dark">
                         <thead>
@@ -61,7 +154,6 @@ class UploadComponent extends Component {
                                     return (
                                         <tr key={index}>
                                             { item.map((iText, i) => {
-                                                {/* <td key={index + '-' + i}> { (iText !== "" && i !== 0) ? 'Q. ' : '' } {iText}</td> */}
                                                 return (
                                                     <td key={index + '-' + i}> {iText}</td>
                                                 )
