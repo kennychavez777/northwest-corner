@@ -58,7 +58,6 @@ class UploadComponent extends Component {
                             value: value,
                             x: newI,
                             y: b,
-                            used: false,
                             offer: parseInt(data[i][data.length]),
                             demand: parseInt(data[data.length - 2][b]),
                         })
@@ -75,46 +74,49 @@ class UploadComponent extends Component {
             return { offer: offer, demand: demand, data: realData }
         });
 
-        /* Min Cost */
-        let min = this.getMin(realData);
-        // console.log(realData, min);
+        /* Northwest Method */
+        this.getNorthWest(realData);
 
         return isValid;
     }
 
-    getMin(data){
-        let min = data[0].value, minIndex = 0;
+    getNorthWest(data){
+        for ( let a = 0; a < 1; a++ ) {
+            let offer = data[a].offer, demand = data[a].demand, difference = 0;
+            difference = Math.abs(offer - demand);
 
-        console.log('DATA BEFORE: ',data);
-
-        for (let i = 1; i < data.length; i++){
-            if(!data[i].used){
-                let v = data[i].value;
-    
-                min = ( v < min ) ? v : min;
+            if ( offer >= demand ) {
+                data[a].demand = 0;
+                data = this.changeRowOrColumn(data[a].x, data[a].y, 'row', data, difference);
+            } else if ( offer < demand ) {
+                data[a].offer = 0;
+                data = this.changeRowOrColumn(data[a].y, data[a].y, 'column', data, difference);
             }
         }
 
-        for (let a = 0; a < data.length; a++){
-            if(data[a].value === min){
-                minIndex = a;
+    }
+
+    changeRowOrColumn(x, y, key, data, difference){
+        for ( let i = 0; i < data.length; i++ ){
+            if ( key === 'row' ) {
+                if ( data[i].x === x ) {
+                    data[i].offer = difference;
+                }
+                
+                if ( data[i].y === y ){
+                    data[i].demand = 0;
+                }
+            }
+            
+            if ( key === 'column' ) {
+                if ( data[i].y === x ) {
+                    data[i].demand = difference;
+                }
             }
         }
 
-        data[minIndex].used = true;
-        let difference = data[minIndex].offer - data[minIndex].demand;
-
-        if (data[minIndex].offer >= data[minIndex].demand) {
-            data[minIndex].demand = 0;
-            data[minIndex].offer = difference;
-        } else if(data[minIndex].offer < data[minIndex].demand) {
-            data[minIndex].demand = difference;
-            data[minIndex].offer = 0;
-        }
-
-        console.log('DATA NEXT: ',data);
-
-        return { value: min, minIndex: minIndex};
+        console.log('X: ',x, 'Y: ', y, ' COLUMN: ', key, ' DATA: ', data);
+        return data;
     }
 
     handleError(error){
